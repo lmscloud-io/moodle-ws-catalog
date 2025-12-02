@@ -116,7 +116,6 @@ foreach ($functions as $record) {
 }
 $result = json_encode([
     'component' => $plugin,
-    'version' => $pluginversion,
     'functions' => $allfunctions,
 ], JSON_PRETTY_PRINT) . "\n";
 

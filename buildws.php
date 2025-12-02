@@ -24,9 +24,34 @@
 
 define('CLI_SCRIPT', true);
 
-$curdir = $_SERVER['PWD'] ?: __DIR__;
+$argc = $_SERVER['argc'];
+$argv = $_SERVER['argv'];
 
-require($curdir . '/config.php');
+$rawoptions = $_SERVER['argv'] ?? [];
+// Remove anything after '--', options can not be there.
+if (($key = array_search('--', $rawoptions)) !== false) {
+    $rawoptions = array_slice($rawoptions, 0, $key);
+}
+array_shift($rawoptions);
+if (!$rawoptions || $rawoptions[0] == "--help" || $rawoptions[0] == "-h") {
+    echo "Usage:\n";
+    echo "    /usr/bin/php buildws.php --plugin=PLUGINNAME /path/to/moodle\n";
+    echo "\n";
+    echo "Where PLUGINNAME is either 'core' or a full name of the plugin.\n";
+    exit(0);
+}
+$pathtomoodle = $rawoptions[count($rawoptions) - 1];
+if (preg_match('/^\\-/', $pathtomoodle) || !file_exists($pathtomoodle) || !is_dir($pathtomoodle)) {
+    echo "Unrecognized command format. Run --help for usage.\n";
+    exit(1);
+}
+$pathtomoodle = rtrim($pathtomoodle, "/\\");
+if (!file_exists($pathtomoodle . "/config.php")) {
+    echo "Moodle not found at $pathtomoodle.\n";
+    exit(1);
+}
+
+require($pathtomoodle . '/config.php');
 require_once("$CFG->libdir/clilib.php");
 require_once($CFG->dirroot.'/webservice/lib.php');
 require_once($CFG->dirroot.'/lib/externallib.php');
@@ -35,21 +60,30 @@ list($options, $unrecognized) = cli_get_params(
     [
         'help' => false,
         'plugin' => '',
-        'outputdir' => '',
     ],
     ['h' => 'help']
 );
-
-// TODO display help.
 
 $plugin = $options['plugin'];
 if ($plugin == '') {
     cli_error("Argument --plugin is required.");
 }
 $plugin = core_component::normalize_componentname($plugin);
-$standardplugins = \core\plugin_manager::instance()->get_standard_plugins();
+
+if (class_exists('\core\plugin_manager')) {
+    $standardplugins = \core\plugin_manager::instance()->get_standard_plugins();
+} else {
+    $standardplugins = [];
+    foreach (core_plugin_manager::instance()->get_plugin_types() as $type => $unused) {
+        $list = core_plugin_manager::standard_plugins_list($type) ?: [];
+        foreach ($list as $pluginname) {
+            $standardplugins[] = $type . '_' . $pluginname;
+        }
+    }
+}
+
 if ($plugin === 'core') {
-    $pluginversion = "". floor($CFG->version);
+    $pluginversion = _buildws_get_core_version();
 } else if (!preg_match('/^core_/', $plugin) && ($dir = core_component::get_component_directory($plugin))) {
     if (in_array($plugin, $standardplugins)) {
         cli_error("Plugin '$plugin' is a standard plugin, use --plugin=core instead.");
@@ -86,23 +120,30 @@ $result = json_encode([
     'functions' => $allfunctions,
 ], JSON_PRETTY_PRINT) . "\n";
 
-if ($options['outputdir']) {
-    if (!is_dir($options['outputdir'])) {
-        cli_error("Output directory '{$options['outputdir']}' does not exist.");
-    }
-    $file = $options['outputdir'] . "/" .
-        ($plugin == "core" ? "core" : "plugins/$plugin") .
-        "/{$pluginversion}.json";
-    $dir = dirname($file);
-    if (!file_exists($dir)) {
-        mkdir($dir);
-    }
+if (!is_dir(__DIR__."/core") || !is_dir(__DIR__."/plugins")) {
+    cli_error("Current directory '{".__DIR__."}' is not a moodle-ws directory.");
+}
+$file = __DIR__ . "/" .
+    ($plugin == "core" ? "core" : "plugins/$plugin") .
+    "/{$pluginversion}.json";
+$dir = dirname($file);
+[$lastversion, $nextversion] = _buildws_get_last_version($dir, $pluginversion);
+if ($lastversion && file_get_contents($lastversion) == $result) {
+    echo "List of web services is the same as in the existing file $lastversion . Exiting.\n";
+    exit(0);
+} else if ($nextversion && file_get_contents($nextversion) == $result) {
+    echo "List of web services is the same as in the existing file $nextversion . Updating the version list.\n";
     file_put_contents($file, $result);
+    unlink($nextversion);
 } else {
-    echo $result;
+    file_put_contents($file, $result);
 }
 
-function _buildws_convert($value) {
+// Re-build versions file.
+$availableversions = _buildws_get_versions_list($dir);
+file_put_contents($dir.'/versions.txt', implode("\n", $availableversions)."\n");
+
+function _buildws_convert($value, $key = null, $parent = null) {
     if ($value instanceof external_description || is_array($value) || is_object($value)) {
         $rv = [];
         if ($value instanceof external_description) {
@@ -110,10 +151,16 @@ function _buildws_convert($value) {
             $rv['class'] = $classparts[count($classparts) - 1];
         }
         foreach ($value as $k => $v) {
-            $rv[$k] = _buildws_convert($v);
+            $rv[$k] = _buildws_convert($v, $k, $value);
         }
         return $rv;
     } else {
+        if ($parent instanceof external_value) {
+            if ($parent->type == PARAM_INT && $value >= time() - 1 && $value <= time() && $key == "default") {
+                // Avoid including current time as default value, it messes up the diff.
+                return 0;
+            }
+        }
         return $value;
     }
 }
@@ -133,4 +180,56 @@ function _buildws_get_component_version($plugindir) {
     $plugin = new \stdClass();
     include($versionpath);
     return "" . $plugin->version;
+}
+
+function _buildws_get_core_version() {
+    global $CFG;
+    $maturity = null;
+    $version = null;
+    if (file_exists("$CFG->dirroot/public/version.php")) {
+        require("$CFG->dirroot/public/version.php");
+    } else {
+        require("$CFG->dirroot/version.php");
+    }
+    if ($maturity == MATURITY_STABLE) {
+        return floor($version / 100) * 100;
+    } else {
+        return sprintf("%.2f", $version);
+    }
+}
+
+function _buildws_get_last_version($dir, $curversion) {
+    if (!file_exists($dir . '/versions.txt')) {
+        mkdir($dir);
+        file_put_contents($dir . '/versions.txt', '');
+        return [null, null];
+    }
+    $versions = _buildws_get_versions_list($dir);
+    $lastversion = null;
+    $nextversion = null;
+    foreach ($versions as $version) {
+        if ((float)$version > (float)$curversion) {
+            $nextversion = $version;
+            break;
+        }
+        $lastversion = $version;
+    }
+    return [
+        $lastversion ? $dir . '/' . $lastversion . '.json' : null,
+        $nextversion ? $dir . '/' . $nextversion . '.json' : null,
+    ];
+}
+
+function _buildws_get_versions_list($dir) {
+    $availableversions = scandir($dir);
+    $availableversions = array_filter($availableversions, function ($version) {
+        return preg_match('/\\.json$/', $version);
+    });
+    $availableversions = array_map(function ($version) {
+        return preg_replace('/\\.json$/', '', $version);
+    }, $availableversions);
+    usort($availableversions, function($a, $b) {
+        return (float)$a - (float)$b;
+    });
+    return $availableversions;
 }

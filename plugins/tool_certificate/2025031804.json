@@ -1,0 +1,295 @@
+{
+    "component": "tool_certificate",
+    "version": "2025031804",
+    "functions": [
+        {
+            "name": "tool_certificate_delete_element",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": null,
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "id": {
+                        "class": "external_value",
+                        "desc": "Element id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": null,
+            "description": "Deletes an element",
+            "type": "write",
+            "loginrequired": true,
+            "readonlysession": false
+        },
+        {
+            "name": "tool_certificate_delete_template",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": null,
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "id": {
+                        "class": "external_value",
+                        "desc": "Template id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": null,
+            "description": "Deletes a template",
+            "type": "write",
+            "loginrequired": true,
+            "readonlysession": false
+        },
+        {
+            "name": "tool_certificate_duplicate_template",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": null,
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "id": {
+                        "class": "external_value",
+                        "desc": "Template id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    },
+                    "categoryid": {
+                        "class": "external_value",
+                        "desc": "Category id",
+                        "required": 0,
+                        "default": 0,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": null,
+            "description": "Duplicates a template",
+            "type": "write",
+            "loginrequired": true,
+            "readonlysession": false
+        },
+        {
+            "name": "tool_certificate_potential_users_selector",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": null,
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "search": {
+                        "class": "external_value",
+                        "desc": "Search string",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "notags"
+                    },
+                    "itemid": {
+                        "class": "external_value",
+                        "desc": "Item id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": {
+                "class": "external_multiple_structure",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "content": {
+                    "class": "external_single_structure",
+                    "desc": "",
+                    "required": 1,
+                    "default": null,
+                    "allownull": false,
+                    "keys": {
+                        "id": {
+                            "class": "external_value",
+                            "desc": "ID of the user",
+                            "required": 1,
+                            "default": null,
+                            "allownull": true,
+                            "type": "int"
+                        },
+                        "fullname": {
+                            "class": "external_value",
+                            "desc": "The fullname of the user",
+                            "required": 1,
+                            "default": null,
+                            "allownull": true,
+                            "type": "notags"
+                        },
+                        "email": {
+                            "class": "external_value",
+                            "desc": "An email address",
+                            "required": 2,
+                            "default": null,
+                            "allownull": true,
+                            "type": "raw_trimmed"
+                        }
+                    }
+                }
+            },
+            "description": "get list of users",
+            "type": "read",
+            "loginrequired": true,
+            "readonlysession": false
+        },
+        {
+            "name": "tool_certificate_regenerate_issue_file",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": null,
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "id": {
+                        "class": "external_value",
+                        "desc": "The issue id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": null,
+            "description": "Regenerates an issue file",
+            "type": "write",
+            "loginrequired": true,
+            "readonlysession": false
+        },
+        {
+            "name": "tool_certificate_revoke_issue",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": "moodle_mobile_app",
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "id": {
+                        "class": "external_value",
+                        "desc": "The issue id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": null,
+            "description": "Revoke an issue for a certificate",
+            "type": "write",
+            "loginrequired": true,
+            "readonlysession": false
+        },
+        {
+            "name": "tool_certificate_update_element",
+            "component": "tool_certificate",
+            "capabilities": "",
+            "services": null,
+            "allowed_from_ajax": true,
+            "parameters_desc": {
+                "class": "external_function_parameters",
+                "desc": "",
+                "required": 1,
+                "default": null,
+                "allownull": false,
+                "keys": {
+                    "id": {
+                        "class": "external_value",
+                        "desc": "Element id",
+                        "required": 1,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    },
+                    "sequence": {
+                        "class": "external_value",
+                        "desc": "Sequence",
+                        "required": 0,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    },
+                    "posx": {
+                        "class": "external_value",
+                        "desc": "X position",
+                        "required": 0,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    },
+                    "posy": {
+                        "class": "external_value",
+                        "desc": "Y position",
+                        "required": 0,
+                        "default": null,
+                        "allownull": true,
+                        "type": "int"
+                    }
+                }
+            },
+            "returns_desc": {
+                "class": "external_value",
+                "desc": "success",
+                "required": 1,
+                "default": null,
+                "allownull": true,
+                "type": "bool"
+            },
+            "description": "Updates an element",
+            "type": "write",
+            "loginrequired": true,
+            "readonlysession": false
+        }
+    ]
+}

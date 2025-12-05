@@ -1,0 +1,39 @@
+name: Check-plugin-updates
+
+on:
+  workflow_dispatch:
+    inputs:
+      phpversion:
+        description: "PHP version"
+        type: string
+        default: "8.2"
+  # schedule:
+  #   - cron: '30 5 * * 1,3'
+  #   - cron: '30 5,17 * * 2,4'
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          path: catalog
+
+      - name: Setup PHP ${{ github.event.inputs.phpversion }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ github.event.inputs.phpversion }}
+          coverage: none
+
+      - name: Check for plugin updates
+        run: |
+          php scripts/checknewversions.php
+          echo "-------------------------"
+          gh workflow run process_plugin_version.yml --repo ${{ github.repository }} --field plugin=tool_myplugin --field pluginversion=123456
+          echo "-------------------------"
+          echo '{"plugin":"abcdef","pluginversion":"12312312"}' | gh workflow run process_plugin_version.yml --json
+          echo "-------------------------"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}

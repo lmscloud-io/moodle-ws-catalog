@@ -1,0 +1,24 @@
+name: Process-plugin-version-test
+
+on:
+  repository_dispatch
+
+jobs:
+  process-version:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          path: catalog
+
+      - name: Test step
+        run: |
+          echo "---------------------------"
+          echo "Plugin: ${{ github.event.client_payload.plugin }}"
+          echo "Plugin version: ${{ github.event.client_payload.pluginversion }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "---------------------------"

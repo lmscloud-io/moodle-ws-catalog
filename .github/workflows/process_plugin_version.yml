@@ -1,7 +1,16 @@
 name: Process-plugin-version-test
 
 on:
-  repository_dispatch
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "Plugin name"
+        required: true
+        type: string
+      pluginversion:
+        description: "Plugin version"
+        required: true
+        type: string
 
 jobs:
   process-version:
@@ -18,7 +27,8 @@ jobs:
       - name: Test step
         run: |
           echo "---------------------------"
-          echo "Plugin: ${{ github.event.client_payload.plugin }}"
+          echo "Plugin-input: ${{ github.event.inputs.plugin }}
+          echo "Plugin-event: ${{ github.event.client_payload.plugin }}"
           echo "Plugin version: ${{ github.event.client_payload.pluginversion }}"
           echo "Action: ${{ github.event.action }}"
           echo "---------------------------"

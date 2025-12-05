@@ -75,7 +75,9 @@ foreach ($data['plugins'] as $plugininfo) {
     }
 }
 
-echo json_encode($toprocess, JSON_PRETTY_PRINT);
+foreach ($toprocess as $item) {
+    echo json_encode($item) . "\n";
+}
 
 function get_moodle_branch($version) {
     if ($version == "3.9") {

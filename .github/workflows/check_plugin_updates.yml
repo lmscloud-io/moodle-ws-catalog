@@ -30,11 +30,8 @@ jobs:
       - name: Check for plugin updates
         run: |
           cd catalog
-          php scripts/checknewversions.php
-          echo "------------------------- ${{ github.repository }}"
-          gh workflow run process_plugin_version.yml --repo ${{ github.repository }} --field plugin=tool_myplugin --field pluginversion=123456 || true
-          echo "-------------------------"
-          echo '{"plugin":"abcdef","pluginversion":"12312312"}' | gh workflow run process_plugin_version.yml --json
-          echo "-------------------------"
+          php scripts/checknewversions.php | while IFS= read -r line; do
+            echo "$line" | gh workflow run process_plugin_version.yml --json
+          done
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}

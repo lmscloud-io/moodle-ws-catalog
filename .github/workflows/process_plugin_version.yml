@@ -27,8 +27,6 @@ jobs:
       - name: Test step
         run: |
           echo "---------------------------"
-          echo "Plugin-input: ${{ github.event.inputs.plugin }}
-          echo "Plugin-event: ${{ github.event.client_payload.plugin }}"
-          echo "Plugin version: ${{ github.event.client_payload.pluginversion }}"
-          echo "Action: ${{ github.event.action }}"
+          echo "Plugin-input: ${{ github.event.inputs.plugin }}"
+          echo "Plugin version: ${{ github.event.inputs.pluginversion }}"
           echo "---------------------------"

@@ -29,6 +29,7 @@ jobs:
 
       - name: Check for plugin updates
         run: |
+          cd catalog
           php scripts/checknewversions.php
           echo "-------------------------"
           gh workflow run process_plugin_version.yml --repo ${{ github.repository }} --field plugin=tool_myplugin --field pluginversion=123456

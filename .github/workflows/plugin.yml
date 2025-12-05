@@ -1,0 +1,114 @@
+name: Download-plugin-version
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: 'Plugin name'
+        type: string
+        required: true
+      downloadurl:
+        description: 'Plugin download URL'
+        type: string
+        required: true
+      moodle-branch:
+        description: 'Moodle branch'
+        type: string
+        required: true
+      php:
+        description: 'PHP version'
+        type: string
+        required: true
+      database:
+        description: 'Database type (mariadb or postgres)'
+        type: string
+        default: mariadb
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: 'postgres'
+          POSTGRES_HOST_AUTH_METHOD: 'trust'
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
+
+      mariadb:
+        image: mariadb:10
+        env:
+          MYSQL_USER: 'root'
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MYSQL_CHARACTER_SET_SERVER: "utf8mb4"
+          MYSQL_COLLATION_SERVER: "utf8mb4_unicode_ci"
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 3
+
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     php: ['7.4', '8.0', '8.1']
+    #     moodle-branch: ['MOODLE_401_STABLE']
+    #     database: [pgsql, mariadb]
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          path: catalog
+
+      - name: Download specified plugin version
+        run: |
+          url="${{ github.event.inputs.downloadurl }}"
+          echo "Downloading ${url}"
+          pwd
+          curl -L "$url" -o plugin.zip
+          unzip -d plugin plugin.zip
+          rm plugin.zip
+          ls -l plugin
+
+      - name: Setup PHP ${{ github.event.inputs.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ github.event.inputs.php }}
+          #extensions: ${{ matrix.extensions }}
+          ini-values: max_input_vars=5000
+          # If you are not using code coverage, keep "none". Otherwise, use "pcov" (Moodle 3.10 and up) or "xdebug".
+          # If you try to use code coverage with "none", it will fallback to phpdbg (which has known problems).
+          coverage: none
+
+      - name: Initialise moodle-plugin-ci
+        run: |
+          composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
+          echo $(cd ci/bin; pwd) >> $GITHUB_PATH
+          echo $(cd ci/vendor/bin; pwd) >> $GITHUB_PATH
+          sudo locale-gen en_AU.UTF-8
+          echo "NVM_DIR=$HOME/.nvm" >> $GITHUB_ENV
+
+      - name: Install moodle-plugin-ci
+        run: |
+          moodle-plugin-ci add-plugin lmscloud-io/moodle-tool_wsdiscovery
+          moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
+        env:
+          DB: ${{ github.event.inputs.database }}
+          MOODLE_BRANCH: ${{ github.event.inputs.moodle-branch }}
+          # Uncomment this to run Behat tests using the Moodle App.
+          # MOODLE_APP: 'true'
+
+      - name: Running wsdiscovery
+        if: ${{ !cancelled() }}
+        run: |
+          pwd
+          ls -l
+          [ -d "public" ] && PUBLIC="public/" || PUBLIC=""
+          php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --group-by-component > ./temp.json
+          ls -l
+
+      - name: Mark cancelled jobs as failed.
+        if: ${{ cancelled() }}
+        run: exit 1

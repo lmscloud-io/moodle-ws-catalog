@@ -110,12 +110,12 @@ jobs:
           [ -d "public" ] && PUBLIC="public/" || PUBLIC=""
           php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --include=addons --group-by-component > ./temp.json || exit 1
           cd ../catalog
-          git pull origin HEAD
+          git config --global user.name 'LMSCloud'
+          git config --global user.email 'contrib@lmscloud.io'
+          git pull
           php scripts/processjson.php < ../moodle/temp.json
           echo ${{ github.event.inputs.pluginversion }} >> plugins/${{ github.event.inputs.plugin }}/processed.txt
           php scripts/fixlistings.php
-          git config --global user.name 'LMSCloud'
-          git config --global user.email 'contrib@lmscloud.io'
           git add .
           git commit -am "Update ${{ github.event.inputs.plugin }}, version ${{ github.event.inputs.pluginversion }}"
           git push

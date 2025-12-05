@@ -37,8 +37,6 @@ $plugininfos = array_filter($data['plugins'], function($plugin) use ($plugins) {
     return in_array($plugin['component'], $plugins);
 });
 
-echo json_encode($plugininfos, JSON_PRETTY_PRINT);
-
 $toprocess = [];
 foreach ($data['plugins'] as $plugininfo) {
     if (!in_array($plugininfo['component'], $plugins)) {
@@ -65,13 +63,15 @@ foreach ($data['plugins'] as $plugininfo) {
             // Ignore very old versions.
             continue;
         }
+        $moodlebranch = get_moodle_branch(((float)$supportedmin < $minversion) ? "".$minversion : $supportedmin);
         $toprocess[] = [
             'plugin' => $plugininfo['component'],
-            'version' => $versioninfo['version'],
-            'branch' => get_moodle_branch(((float)$supportedmin < $minversion) ? "".$minversion : $supportedmin),
+            'pluginversion' => $versioninfo['version'].':'.$versioninfo['downloadmd5'],
             'downloadurl' => $versioninfo['downloadurl'],
-            'downloadmd5' => $versioninfo['downloadmd5'],
+            'moodlebranch' => $moodlebranch,
+            'phpversion' => get_php_version($moodlebranch),
         ];
+
     }
 }
 
@@ -89,4 +89,20 @@ function get_moodle_branch($version) {
         $b = (int)(($version - $a) * 10);
         return "MOODLE_${a}0{$b}_STABLE";
     }
+}
+
+function get_php_version($branch) {
+    global $maindir;
+    static $versionrequirements = null;
+    if ($versionrequirements === null)  {
+        $versionrequirements = json_decode(file_get_contents($maindir . '/moodleversions.json'), true);
+    }
+    $branch = (int)preg_replace('/[^\d]/', '', $branch);
+    foreach ($versionrequirements as $versioninfo) {
+        if ($versioninfo['moodle'] == $branch) {
+            return $versioninfo['phpmin'];
+        }
+    }
+    $lastversion = end($versionrequirements);
+    return $lastversion['phpmin'];
 }

@@ -1,21 +1,25 @@
-name: Download-plugin-version
+name: Process-plugin-version
 
 on:
   workflow_dispatch:
     inputs:
-      # plugin:
-      #   description: 'Plugin name without type prefix'
-      #   type: string
-      #   required: true
+      plugin:
+        description: 'Plugin name'
+        type: string
+        required: true
+      pluginversion:
+        description: 'Plugin version'
+        type: string
+        required: true
       downloadurl:
         description: 'Plugin download URL'
         type: string
         required: true
-      moodle-branch:
+      moodlebranch:
         description: 'Moodle branch'
         type: string
         required: true
-      php:
+      phpversion:
         description: 'PHP version'
         type: string
         required: true
@@ -49,13 +53,6 @@ jobs:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 3
 
-    # strategy:
-    #   fail-fast: false
-    #   matrix:
-    #     php: ['7.4', '8.0', '8.1']
-    #     moodle-branch: ['MOODLE_401_STABLE']
-    #     database: [pgsql, mariadb]
-
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -65,21 +62,16 @@ jobs:
       - name: Download specified plugin version
         run: |
           url="${{ github.event.inputs.downloadurl }}"
-          echo "Downloading ${url}"
-          pwd
-          curl -L "$url" -o plugin.zip
+          curl -L "$url" -o plugin.zip || exit 1
           unzip -d tmp plugin.zip
           rm plugin.zip
           pluginpath=`ls -d1 tmp/* | head -1`
           mv $pluginpath plugin
-        # /home/runner/work/moodle-ws/moodle-ws
-        # ls -l plugin
-        # drwxrwxrwx 11 runner runner 4096 Oct  7 15:32 coursecertificate
 
-      - name: Setup PHP ${{ github.event.inputs.php }}
+      - name: Setup PHP ${{ github.event.inputs.phpversion }}
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ github.event.inputs.php }}
+          php-version: ${{ github.event.inputs.phpversion }}
           #extensions: ${{ matrix.extensions }}
           ini-values: max_input_vars=5000
           # If you are not using code coverage, keep "none". Otherwise, use "pcov" (Moodle 3.10 and up) or "xdebug".
@@ -94,39 +86,34 @@ jobs:
           sudo locale-gen en_AU.UTF-8
           echo "NVM_DIR=$HOME/.nvm" >> $GITHUB_ENV
 
-      - name: Install moodle-plugin-ci
+      - name: Install moodle
         run: |
           moodle-plugin-ci add-plugin lmscloud-io/moodle-tool_wsdiscovery
           moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
           pushd moodle
-          head -40 config.php
-          php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T --supportemail=i@am.invalid
+          if [[ "${{ github.event.inputs.moodlebranch }}" < "MOODLE_401_STABLE" ]]; then
+            php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T || exit 1
+          else
+            php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T --supportemail=i@am.invalid || exit 1
+          fi
+          popd
+
         env:
           DB: ${{ github.event.inputs.database }}
-          MOODLE_BRANCH: ${{ github.event.inputs.moodle-branch }}
-          # Uncomment this to run Behat tests using the Moodle App.
-          # MOODLE_APP: 'true'
+          MOODLE_BRANCH: ${{ github.event.inputs.moodlebranch }}
 
       - name: Running wsdiscovery
-        if: ${{ !cancelled() }}
         run: |
           cd moodle
           [ -d "public" ] && PUBLIC="public/" || PUBLIC=""
-          php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --include=addons --group-by-component > ./temp.json
+          php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --include=addons --group-by-component > ./temp.json || exit 1
           cd ../catalog
+          git pull origin HEAD
           php scripts/processjson.php < ../moodle/temp.json
-          git remove -v || true
-          git status
-        # Run pwd
-        # /home/runner/work/moodle-ws/moodle-ws
-        # total 24
-        # drwxr-xr-x  7 runner runner 4096 Dec  5 11:12 catalog
-        # drwxr-xr-x  6 runner runner 4096 Dec  5 11:12 ci
-        # drwxr-xr-x 60 runner runner 4096 Dec  5 11:12 moodle
-        # drwxr-xr-x  3 runner runner 4096 Dec  5 11:12 moodle-plugin-ci-plugins
-        # drwxrwxrwx  5 runner runner 4096 Dec  5 11:12 moodledata
-        # drwxr-xr-x  3 runner runner 4096 Dec  5 11:12 plugin
-
-      - name: Mark cancelled jobs as failed.
-        if: ${{ cancelled() }}
-        run: exit 1
+          echo ${{ github.event.inputs.pluginversion }} >> plugins/${{ github.event.inputs.plugin }}/processed.txt
+          php scripts/fixlistings.php
+          git config --global user.name 'LMSCloud'
+          git config --global user.email 'contrib@lmscloud.io'
+          git add .
+          git commit -am "Update ${{ github.event.inputs.plugin }}, version ${{ github.event.inputs.pluginversion }}"
+          git push

@@ -123,10 +123,11 @@ function curl_get($url) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
     $response = curl_exec($ch);
+    $errno = curl_errno($ch);
     curl_close($ch);
 
-    if (curl_errno($ch)) {
-        throw new Exception('Error:' . curl_error($ch));
+    if ($errno) {
+        throw new Exception("Error requesting $url: " . curl_error($ch));
     }
 
     return $response;

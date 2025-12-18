@@ -88,6 +88,7 @@ foreach ($data['plugins'] as $plugininfo) {
             'plugin' => $plugininfo['component'],
             'pluginversion' => $versioninfo['version'].':'.$versioninfo['downloadmd5'],
             'downloadurl' => $versioninfo['downloadurl'],
+            'moodlebranch' => $moodlebranch,
             'phpversion' => get_php_version($moodlebranch),
         ];
 

@@ -15,6 +15,10 @@ on:
         description: 'Plugin download URL'
         type: string
         required: true
+      moodlebranch:
+        description: 'Moodle branch'
+        type: string
+        required: true
       phpversion:
         description: 'PHP version'
         type: string
@@ -64,6 +68,7 @@ jobs:
           echo "Plugin: ${{ github.event.inputs.plugin }}"
           echo "Version: ${{ github.event.inputs.pluginversion }}"
           echo "Download URL: ${{ github.event.inputs.downloadurl }}"
+          echo "Moodle branch: ${{ github.event.inputs.moodlebranch }}"
           echo "PHP version: ${{ github.event.inputs.phpversion }}"
           echo "========================================"
           url="${{ github.event.inputs.downloadurl }}"
@@ -88,6 +93,9 @@ jobs:
         run: |
           BRANCH=`php catalog/scripts/findmoodlebranch.php ./plugin`
           echo "Detected Moodle branch: $BRANCH"
+          if [[ "$BRANCH" < "${{ github.event.inputs.branch }}" ]]; then
+            BRANCH="${{ github.event.inputs.moodlebranch }}"
+          fi
           echo "MOODLE_BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "========================================"
           echo "Moodle branch: $BRANCH"

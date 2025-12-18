@@ -90,6 +90,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          moodle-plugin-ci add-plugin lmscloud-io/moodle-tool_wsdiscovery
           echo "------ installing dependencies ------"
           pwd
           ls -la
@@ -98,7 +99,6 @@ jobs:
 
       - name: Install moodle
         run: |
-          moodle-plugin-ci add-plugin lmscloud-io/moodle-tool_wsdiscovery
           moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
           pushd moodle
           if [[ "${{ github.event.inputs.moodlebranch }}" < "MOODLE_401_STABLE" ]]; then

@@ -93,7 +93,7 @@ jobs:
         run: |
           BRANCH=`php catalog/scripts/findmoodlebranch.php ./plugin`
           echo "Detected Moodle branch: $BRANCH"
-          if [[ "$BRANCH" < "${{ github.event.inputs.branch }}" ]]; then
+          if [[ "$BRANCH" < ${{ github.event.inputs.moodlebranch }} ]]; then
             BRANCH="${{ github.event.inputs.moodlebranch }}"
           fi
           echo "MOODLE_BRANCH=$BRANCH" >> $GITHUB_ENV

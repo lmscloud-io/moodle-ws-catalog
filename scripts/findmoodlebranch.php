@@ -40,14 +40,14 @@ if (!is_dir($plugindir)) {
 }
 
 $plugin = read_version_file($plugindir . '/version.php');
-$requires = $plugin->requires ?? 0;
+$requires = floor((float)($plugin->requires ?? 0)/100) * 100;
 
 $moodleversions = json_decode(file_get_contents($maindir . '/moodleversions.json'), true);
 $lastrow = null;
 $branch = null;
 foreach ($moodleversions as $moodleversion) {
     if ($lastrow != null && (float)$requires < (float)$moodleversion['version']) {
-        $branch = $lastrow['moodle'];
+        $branch = $moodleversion['moodle'];
         break;
     }
     $lastrow = $moodleversion;

@@ -87,7 +87,7 @@ jobs:
         run: |
           BRANCH=`php catalog/scripts/findmoodlebranch.php ./plugin`
           echo "Detected Moodle branch: $BRANCH"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "MOODLE_BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Initialise moodle-plugin-ci
         run: |
@@ -100,13 +100,14 @@ jobs:
       - name: Install dependencies
         run: |
           moodle-plugin-ci add-plugin lmscloud-io/moodle-tool_wsdiscovery
-          php catalog/scripts/getdependencies.php ./plugin $BRANCH ./moodle-plugin-ci-plugins || exit 1
+          php catalog/scripts/getdependencies.php ./plugin $MOODLE_BRANCH ./moodle-plugin-ci-plugins || exit 1
 
       - name: Install moodle
         run: |
+          echo "---- TEST: $MOODLE_BRANCH ----"
           moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
           pushd moodle
-          if [[ "$BRANCH" < "MOODLE_401_STABLE" ]]; then
+          if [[ "$MOODLE_BRANCH" < "MOODLE_401_STABLE" ]]; then
             php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T || exit 1
           else
             php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T --supportemail=i@am.invalid || exit 1
@@ -115,7 +116,6 @@ jobs:
 
         env:
           DB: ${{ github.event.inputs.database }}
-          MOODLE_BRANCH: ${BRANCH}
 
       - name: Running wsdiscovery
         run: |

@@ -15,10 +15,6 @@ on:
         description: 'Plugin download URL'
         type: string
         required: true
-      moodlebranch:
-        description: 'Moodle branch'
-        type: string
-        required: true
       phpversion:
         description: 'PHP version'
         type: string
@@ -67,7 +63,6 @@ jobs:
           echo "Plugin: ${{ github.event.inputs.plugin }}"
           echo "Version: ${{ github.event.inputs.pluginversion }}"
           echo "Download URL: ${{ github.event.inputs.downloadurl }}"
-          echo "Moodle branch: ${{ github.event.inputs.moodlebranch }}"
           echo "PHP version: ${{ github.event.inputs.phpversion }}"
           echo "========================================"
           url="${{ github.event.inputs.downloadurl }}"
@@ -87,6 +82,13 @@ jobs:
           # If you try to use code coverage with "none", it will fallback to phpdbg (which has known problems).
           coverage: none
 
+      - name: Detect Moodle branch
+        id: detectbranch
+        run: |
+          BRANCH=`php catalog/scripts/findmoodlebranch.php ./plugin`
+          echo "Detected Moodle branch: $BRANCH"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
       - name: Initialise moodle-plugin-ci
         run: |
           composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
@@ -98,13 +100,13 @@ jobs:
       - name: Install dependencies
         run: |
           moodle-plugin-ci add-plugin lmscloud-io/moodle-tool_wsdiscovery
-          php catalog/scripts/getdependencies.php ./plugin ${{ github.event.inputs.moodlebranch }} ./moodle-plugin-ci-plugins || exit 1
+          php catalog/scripts/getdependencies.php ./plugin $BRANCH ./moodle-plugin-ci-plugins || exit 1
 
       - name: Install moodle
         run: |
           moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
           pushd moodle
-          if [[ "${{ github.event.inputs.moodlebranch }}" < "MOODLE_401_STABLE" ]]; then
+          if [[ "$BRANCH" < "MOODLE_401_STABLE" ]]; then
             php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T || exit 1
           else
             php admin/cli/install_database.php --adminuser=admin --adminpass=admin --adminemail=i@am.invalid --agree-license --fullname=T --shortname=T --supportemail=i@am.invalid || exit 1
@@ -113,7 +115,7 @@ jobs:
 
         env:
           DB: ${{ github.event.inputs.database }}
-          MOODLE_BRANCH: ${{ github.event.inputs.moodlebranch }}
+          MOODLE_BRANCH: ${BRANCH}
 
       - name: Running wsdiscovery
         run: |

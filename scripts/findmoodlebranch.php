@@ -29,11 +29,12 @@ define('ANY_VERSION', 'any');
 $maindir = dirname(__DIR__);
 
 // Get from arguments: plugin directory
-if ($argc != 2) {
-    echo "Usage: php findmoodlebranch.php <plugin-dir>\n";
+if ($argc != 3) {
+    echo "Usage: php findmoodlebranch.php <plugin-dir> <minbranch>\n";
     exit(1);
 }
 $plugindir = rtrim($argv[1], '/\\');
+$minbranch = $argv[2];
 if (!is_dir($plugindir)) {
     echo "Plugin directory does not exist.\n";
     exit(1);
@@ -56,6 +57,11 @@ if ($branch === null) {
     echo "No branch found for requires={$requires}\n";
     exit(1);
 } else {
+    $minbranch = preg_replace("/^MOODLE_/", "", $minbranch);
+    $minbranch = preg_replace("/_STABLE$/", "", $minbranch);
+    if ((int)$minbranch > (int)$branch) {
+        $branch = $minbranch;
+    }
     echo "MOODLE_{$branch}_STABLE";
 }
 

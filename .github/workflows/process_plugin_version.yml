@@ -91,7 +91,7 @@ jobs:
       - name: Detect Moodle branch
         id: detectbranch
         run: |
-          BRANCH=`php catalog/scripts/findmoodlebranch.php ./plugin` ${{ github.event.inputs.moodlebranch }}
+          BRANCH=`php catalog/scripts/findmoodlebranch.php ./plugin ${{ github.event.inputs.moodlebranch }}`
           echo "Detected Moodle branch: $BRANCH"
           echo "MOODLE_BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "========================================"

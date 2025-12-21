@@ -94,8 +94,7 @@ jobs:
         run: |
           cd moodle
           [ -d "public" ] && PUBLIC="public/" || PUBLIC=""
-          php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --include=core --group-by-component > ./temp.json || exit 1
-          ls -la
+          php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --group-by-component > ./temp.json || exit 1
           # cd ../catalog
           # git config --global user.name 'LMSCloud'
           # git config --global user.email 'contrib@lmscloud.io'

@@ -42,6 +42,20 @@ Each line of the output is a JSON object similar to this:
 This script is executed in the `.github/workflows/check_plugin_updates.yml` workflow on a schedule and for each
 line in the output a new workflow `.github/workflows/process_plugin_version.yml` is triggered to process the new version.
 
+## checkcoreversions.php
+
+For each core branch checks for new versions in github and returns the list of versions
+that were not yet analysed (not present in core/processed.txt).
+
+Each line of the output is a JSON object similar to this:
+
+```
+{"coreversion":"2025100601.03","moodlebranch":"MOODLE_501_STABLE","phpversion":"8.2"}
+```
+
+This script is executed in the `.github/workflows/check_plugin_updates.yml` workflow on a schedule and for each
+line in the output a new workflow `.github/workflows/process_core_version.yml` is triggered to process the new version.
+
 ## findmoodlebranch.php
 
 Given the plugin directory, analyses version.php and finds the minimum Moodle branch required.

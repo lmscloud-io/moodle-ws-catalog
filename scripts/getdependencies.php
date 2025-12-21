@@ -58,13 +58,13 @@ foreach ($dependencies as $dependency => $minversion) {
     $zipfilepath = $destdir . '/' . $dependency . '.zip';
     try {
         $potentialversions = get_potential_versions($dependency, $minversion, $branch, $timecreated);
-        $found = false;
+        $found = null;
         foreach ($potentialversions as $version) {
             $url = $version['downloadurl'];
             file_put_contents($zipfilepath, curl_get($url));
             $extractedfolder = unzip_file($zipfilepath, $tmpdir);
             if (is_version_ok($extractedfolder, $branch)) {
-                $found = true;
+                $found = $version;
                 rename($extractedfolder, $destdir . '/' . $dependency);
                 break;
             } else {
@@ -74,7 +74,7 @@ foreach ($dependencies as $dependency => $minversion) {
         if (!$found) {
             throw new Exception('Error: No suitable version found for ' . $dependency . " with minversion={$minversion} for branch={$branch}.\n");
         }
-        echo "Done\n";
+        echo "Done ({$found['version']})\n";
     } catch (Exception $e) {
         echo $e->getMessage() . "\n";
     }
@@ -167,7 +167,6 @@ function get_potential_versions($pluginname, $minversion, $branch, $timecreated)
 }
 
 function is_version_ok($dependencyfolder, $branch) {
-    return true;
     try {
         $dependencybranch = get_required_branch($dependencyfolder);
     } catch (Exception $e) {

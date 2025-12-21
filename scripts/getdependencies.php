@@ -19,13 +19,7 @@
  * downloads them from moodle.org/plugins and unpacks to the specified directory.
  */
 
-// Moodle constants that may be used in version.php files.
-define('MOODLE_INTERNAL', 1);
-define('MATURITY_ALPHA', 50);
-define('MATURITY_BETA', 100);
-define('MATURITY_RC', 150);
-define('MATURITY_STABLE', 200);
-define('ANY_VERSION', 'any');
+require_once __DIR__ . '/common.php';
 
 // Get from arguments: plugin directory, branch, destination directory.
 if ($argc != 4) {
@@ -63,11 +57,23 @@ foreach ($dependencies as $dependency => $minversion) {
     echo "Processing dependency: {$dependency}\n";
     $zipfilepath = $destdir . '/' . $dependency . '.zip';
     try {
-        $bestversion = get_best_version($dependency, $minversion, $branch, $timecreated);
-        $url = $bestversion['downloadurl'];
-        file_put_contents($zipfilepath, curl_get($url));
-        $extractedfolder = unzip_file($zipfilepath, $tmpdir);
-        rename($extractedfolder, $destdir . '/' . $dependency);
+        $potentialversions = get_potential_versions($dependency, $minversion, $branch, $timecreated);
+        $found = false;
+        foreach ($potentialversions as $version) {
+            $url = $version['downloadurl'];
+            file_put_contents($zipfilepath, curl_get($url));
+            $extractedfolder = unzip_file($zipfilepath, $tmpdir);
+            if (is_version_ok($extractedfolder, $branch)) {
+                $found = true;
+                rename($extractedfolder, $destdir . '/' . $dependency);
+                break;
+            } else {
+                remove_dir_or_file($extractedfolder);
+            }
+        }
+        if (!$found) {
+            throw new Exception('Error: No suitable version found for ' . $dependency . " with minversion={$minversion} for branch={$branch}.\n");
+        }
         echo "Done\n";
     } catch (Exception $e) {
         echo $e->getMessage() . "\n";
@@ -122,54 +128,6 @@ function unzip_file($zipfilepath, $extractpath) {
     }
 }
 
-function read_version_file($filepath) {
-    $plugin = new stdClass();
-    include($filepath);
-    return $plugin;
-}
-
-function curl_get($url) {
-    $ch = curl_init();
-
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['User-Agent: Curl']);
-    curl_setopt($ch, CURLOPT_HEADER, 0);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-    $response = curl_exec($ch);
-    $errno = curl_errno($ch);
-    curl_close($ch);
-
-    if ($errno) {
-        throw new Exception("Error requesting $url: " . curl_error($ch));
-    }
-
-    return $response;
-}
-
-function get_plugin_url($pluginname, $branch) {
-    $url = "https://download.moodle.org/api/1.3/pluginfo.php?plugin=${pluginname}&format=json" .
-      "&minversion=0&branch=${branch}";
-
-    $response = curl_get($url);
-    $data = json_decode($response, true);
-    if (empty($data['pluginfo']['version']['downloadurl'])) {
-        throw new Exception('Error: download.moodle.org did not return any information on ' . $pluginname . ".\n");
-    }
-    return $data['pluginfo']['version']['downloadurl'];
-}
-
-function get_all_plugins_info() {
-    $url = "https://download.moodle.org/api/1.3/pluglist.php";
-    $response = curl_get($url);
-    $data = json_decode($response, true);
-    if (empty($data['plugins'])) {
-        echo 'Error: download.moodle.org did not return any plugins.';
-        exit(1);
-    }
-    return $data['plugins'];
-}
-
 function get_plugin_info($pluginname) {
     static $allinfo = null;
     if ($allinfo === null) {
@@ -184,7 +142,7 @@ function get_plugin_info($pluginname) {
     throw new Exception('Error: download.moodle.org did not return any information on ' . $pluginname . ".\n");
 }
 
-function get_best_version($pluginname, $minversion, $branch, $timecreated) {
+function get_potential_versions($pluginname, $minversion, $branch, $timecreated) {
     $plugininfo = get_plugin_info($pluginname);
     // Find version where number is >= $minversion and timecreated <= $timecreated + 7 days and supportedmoodles includes $branch.
     $matchingversions = array_filter($plugininfo['versions'], function($versioninfo) use ($minversion, $branch, $timecreated) {
@@ -192,7 +150,7 @@ function get_best_version($pluginname, $minversion, $branch, $timecreated) {
             return false;
         }
         if ($versioninfo['timecreated'] > $timecreated + 7 * 24 * 3600) {
-            return false;
+            // return false;
         }
         $supportedmoodles = array_map(function($x) {
             return get_moodle_branch($x['release']);
@@ -202,19 +160,20 @@ function get_best_version($pluginname, $minversion, $branch, $timecreated) {
         }
         return true;
     });
-    return reset($matchingversions);
+    if (count($matchingversions) == 0) {
+        throw new Exception('Error: No suitable version found for ' . $pluginname . " with minversion={$minversion} for branch={$branch}.\n");
+    }
+    return $matchingversions;
 }
 
-function get_moodle_branch($version) {
-    if ($version == "3.9") {
-        return 'MOODLE_39_STABLE';
-    } elseif ($version == "3.10") {
-        return 'MOODLE_310_STABLE';
-    } elseif ($version == "3.11") {
-        return 'MOODLE_311_STABLE';
-    } else {
-        $a = floor($version);
-        $b = (int)(($version - $a) * 10);
-        return "MOODLE_${a}0{$b}_STABLE";
+function is_version_ok($dependencyfolder, $branch) {
+    return true;
+    try {
+        $dependencybranch = get_required_branch($dependencyfolder);
+    } catch (Exception $e) {
+        return false;
     }
+    $b = preg_replace("/^MOODLE_/", "", $branch);
+    $b = (int)preg_replace("/_STABLE$/", "", $b);
+    return $dependencybranch <= $b;
 }

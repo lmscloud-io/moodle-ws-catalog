@@ -18,15 +18,7 @@
  * Given the plugin, finds the minimum Moodle branch required.
  */
 
-// Moodle constants that may be used in version.php files.
-define('MOODLE_INTERNAL', 1);
-define('MATURITY_ALPHA', 50);
-define('MATURITY_BETA', 100);
-define('MATURITY_RC', 150);
-define('MATURITY_STABLE', 200);
-define('ANY_VERSION', 'any');
-
-$maindir = dirname(__DIR__);
+require_once __DIR__ . '/common.php';
 
 // Get from arguments: plugin directory
 if ($argc != 3) {
@@ -40,34 +32,11 @@ if (!is_dir($plugindir)) {
     exit(1);
 }
 
-$plugin = read_version_file($plugindir . '/version.php');
-$requires = floor((float)($plugin->requires ?? 0)/100) * 100;
+$branch = get_required_branch($plugindir);
 
-$moodleversions = json_decode(file_get_contents($maindir . '/moodleversions.json'), true);
-$lastrow = null;
-$branch = null;
-foreach ($moodleversions as $moodleversion) {
-    if ($lastrow != null && (float)$requires < (float)$moodleversion['version']) {
-        $branch = $moodleversion['moodle'];
-        break;
-    }
-    $lastrow = $moodleversion;
+$minbranch = preg_replace("/^MOODLE_/", "", $minbranch);
+$minbranch = preg_replace("/_STABLE$/", "", $minbranch);
+if ((int)$minbranch > (int)$branch) {
+    $branch = $minbranch;
 }
-if ($branch === null) {
-    echo "No branch found for requires={$requires}\n";
-    exit(1);
-} else {
-    $minbranch = preg_replace("/^MOODLE_/", "", $minbranch);
-    $minbranch = preg_replace("/_STABLE$/", "", $minbranch);
-    if ((int)$minbranch > (int)$branch) {
-        $branch = $minbranch;
-    }
-    echo "MOODLE_{$branch}_STABLE";
-}
-
-
-function read_version_file($filepath) {
-    $plugin = new stdClass();
-    include($filepath);
-    return $plugin;
-}
+echo "MOODLE_{$branch}_STABLE";

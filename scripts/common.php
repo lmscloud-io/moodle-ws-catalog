@@ -27,6 +27,7 @@ define('MATURITY_STABLE', 200);
 define('ANY_VERSION', 'any');
 
 $maindir = dirname(__DIR__);
+$CFG = (object)[];
 
 function get_moodle_branch($version) {
     $v = (float)$version;
@@ -75,9 +76,15 @@ function get_all_plugins_info() {
 
 function read_version_file($filepath) {
     $plugin = new stdClass();
+    $module = new stdClass();
     include($filepath);
 
-    // TODO throw exception if $module is used.
+    if (!empty((array)$module)) {
+        throw new Exception('Error: version.php file uses $module which is not supported: ' . $filepath . "\n");
+    }
+    if (empty($plugin->version)) {
+        throw new Exception('Error: version.php file does not define $plugin->version: ' . $filepath . "\n");
+    }
     return $plugin;
 }
 

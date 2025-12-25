@@ -3,8 +3,8 @@ name: Process-core-version
 on:
   workflow_dispatch:
     inputs:
-      coreversion:
-        description: 'Core version'
+      corecommit:
+        description: 'Core commit hash'
         type: string
         required: true
       moodlebranch:
@@ -93,15 +93,16 @@ jobs:
       - name: Running wsdiscovery
         run: |
           cd moodle
-          [ -d "public" ] && PUBLIC="public/" || PUBLIC=""
+          [ -f "public/version.php" ] && PUBLIC="public/" || PUBLIC=""
           php ${PUBLIC}admin/tool/wsdiscovery/cli/generate_json.php --group-by-component > ./temp.json || exit 1
-          # cd ../catalog
-          # git config --global user.name 'LMSCloud'
-          # git config --global user.email 'contrib@lmscloud.io'
-          # git pull
-          # php scripts/processjson.php < ../moodle/temp.json
-          # echo ${{ github.event.inputs.coreversion }} >> core/processed.txt
+          cd ../catalog
+          git config --global user.name 'LMSCloud'
+          git config --global user.email 'contrib@lmscloud.io'
+          git pull
+          php scripts/processjson.php < ../moodle/temp.json
+          # sed -i '/^${{ github.event.inputs.moodlebranch }}:/d' core/processed.txt
+          # echo ${{ github.event.inputs.moodlebranch }}:${{ github.event.inputs.corecommit }} >> core/processed.txt
           # php scripts/fixlistings.php
           # git add .
-          # git commit -am "Update core ${{ github.event.inputs.moodlebranch }}, version ${{ github.event.inputs.coreversion }}"
+          # git commit -am "Update core ${{ github.event.inputs.moodlebranch }}, commit ${{ github.event.inputs.corecommit }}"
           # git push

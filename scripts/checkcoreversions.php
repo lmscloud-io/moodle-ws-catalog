@@ -15,7 +15,7 @@
 // along with moodle-ws-catalog. If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * For each core branch checks for new versions in github and returns the list of versions
+ * For each core branch checks for new commits in github and returns the list of branches
  * that were not yet analysed (not present in core/processed.txt).
  */
 
@@ -27,48 +27,65 @@ $pluginslistfile = $maindir . '/pluginslist.txt';
 
 $minversion = 3.9;
 
-$toprocess = [];
-$moodleversions = json_decode(file_get_contents($maindir . '/moodleversions.json'), true);
-foreach ($moodleversions as $vinfo) {
-    $branch = get_core_branch($vinfo);
-    $coreversion = get_core_version($vinfo);
-    $processedfile = $coredir . '/processed.txt';
-    $processed = [];
-    if (file_exists($processedfile)) {
-        $processed = preg_split('/\n/', file_get_contents($processedfile), -1, PREG_SPLIT_NO_EMPTY);
+$processedfile = $coredir . '/processed.txt';
+if (file_exists($processedfile)) {
+    $processedlines = preg_split('/\n/', file_get_contents($processedfile), -1, PREG_SPLIT_NO_EMPTY);
+    foreach ($processedlines as $line) {
+        $parts = explode(':', $line);
+        $processed[$parts[0]] = $parts[1];
     }
-    if (in_array($coreversion, $processed)) {
+}
+
+$toprocess = [];
+$branches = [];
+for ($page = 1; $page <= 5; $page++) {
+    $pagebranches = json_decode(curl_get("https://api.github.com/repos/moodle/moodle/branches?per_page=100&page={$page}"), true);
+    if (empty($pagebranches)) {
+        break;
+    }
+    $branches = array_merge($branches, $pagebranches);
+}
+$moodleversions = json_decode(file_get_contents($maindir . '/moodleversions.json'), true);
+
+foreach ($branches as $branchinfo) {
+    $branchname = $branchinfo['name'];
+    if ($branchname == "main") {
+        $moodle = 0;
+    } else if (preg_match('/^MOODLE_(\d+)_STABLE$/', $branchname, $matches)) {
+        $moodle = (int)$matches[1];
+        if ($moodle < 39) {
+           continue;
+        }
+    } else {
+        // Ignore non Moodle branches.
+        continue;
+    }
+
+    $commit = $branchinfo['commit']['sha'];
+    if (isset($processed[$branchname]) && $processed[$branchname] == $commit) {
         // Ignore already processed versions.
         continue;
     }
+    $phpversion = null;
+    foreach ($moodleversions as $vinfo) {
+        if (($branchname == 'main' && empty($vinfo['version'])) || ($branchname != 'main' && $vinfo['moodle'] == $moodle)) {
+            $phpversion = (float)$vinfo['phpmin'] < 7.4 ? '7.4' : $vinfo['phpmin'];
+            break;
+        }
+    }
+    if ($phpversion === null) {
+        // Most likely time to update moodleversions.json (i.e. after major release).
+        // php requirements may also change, so take the max php version from the last known version.
+        $vinfo = end($moodleversions);
+        $phpversion = $vinfo['phpmax'];
+    }
     $toprocess[] = [
-        'coreversion' => $coreversion,
-        'moodlebranch' => $branch,
-        'phpversion' => (float)$vinfo['phpmin'] < 7.4 ? '7.4' : $vinfo['phpmin'],
+        'corecommit' => $commit,
+        'moodlebranch' => $branchname,
+        'phpversion' => $phpversion,
     ];
 }
 
-// Output.
 foreach ($toprocess as $item) {
     echo json_encode($item) . "\n";
-}
-
-function get_core_branch($vinfo) {
-    return empty($vinfo['version']) ? 'main' : "MOODLE_{$vinfo['moodle']}_STABLE";
-}
-
-function get_core_version($vinfo) {
-    $branch = get_core_branch($vinfo);
-    $public = $vinfo['moodle'] >= 501 ? 'public/' : '';
-    $url = "https://raw.githubusercontent.com/moodle/moodle/refs/heads/{$branch}/{$public}version.php";
-// https://raw.githubusercontent.com/moodle/moodle/refs/heads/MOODLE_405_STABLE/version.php
-// https://raw.githubusercontent.com/moodle/moodle/refs/heads/MOODLE_500_STABLE/version.php
-// https://raw.githubusercontent.com/moodle/moodle/refs/heads/MOODLE_501_STABLE/public/version.php
-// https://raw.githubusercontent.com/moodle/moodle/refs/heads/main/public/version.php
-
-    $contents = curl_get($url);
-    if (!preg_match('/\$version\s*=\s*([\d\.]+);/', $contents, $matches)) {
-        throw new Exception("Error: Could not find version in core version.php for branch {$branch}.\n");
-    }
-    return $matches[1];
 }

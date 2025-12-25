@@ -44,13 +44,13 @@ line in the output a new workflow `.github/workflows/process_plugin_version.yml`
 
 ## checkcoreversions.php
 
-For each core branch checks for new versions in github and returns the list of versions
+For each core branch checks for new commits in github and returns the list of branches
 that were not yet analysed (not present in core/processed.txt).
 
 Each line of the output is a JSON object similar to this:
 
 ```
-{"coreversion":"2025100601.03","moodlebranch":"MOODLE_501_STABLE","phpversion":"8.2"}
+{"corecommit":"6e82b46a480826d1a85394d9e5087f7d82d1dd52","moodlebranch":"MOODLE_500_STABLE","phpversion":"8.2"}
 ```
 
 This script is executed in the `.github/workflows/check_plugin_updates.yml` workflow on a schedule and for each

@@ -21,7 +21,7 @@ jobs:
           php-version: 8.2
           coverage: none
 
-      - name: Check for plugin updates
+      - name: Check for updates
         run: |
           cd catalog
           php scripts/checknewversions.php | while IFS= read -r line; do

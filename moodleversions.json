@@ -10,5 +10,5 @@
   {"moodle": 405, "version": "2024100700", "phpmin": "8.1", "phpmax": "8.3"},
   {"moodle": 500, "version": "2025041400", "phpmin": "8.2", "phpmax": "8.4"},
   {"moodle": 501, "version": "2025100600", "phpmin": "8.2", "phpmax": "8.4"},
-  {"moodle": 502, "phpmin": "8.2", "phpmax": "8.4"}
+  {"moodle": 502, "phpmin": "8.3", "phpmax": "8.4"}
 ]

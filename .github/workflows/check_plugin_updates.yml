@@ -27,8 +27,8 @@ jobs:
           php scripts/checknewversions.php | while IFS= read -r line; do
             echo "$line" | gh workflow run process_plugin_version.yml --json
           done
-          # php scripts/checkcoreversions.php | while IFS= read -r line; do
-          #   echo "$line" | gh workflow run process_core_version.yml --json
-          # done
+          php scripts/checkcoreversions.php | while IFS= read -r line; do
+            echo "$line" | gh workflow run process_core_version.yml --json
+          done
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}

@@ -71,7 +71,7 @@ jobs:
           echo "PHP version: ${{ github.event.inputs.phpversion }}"
           echo "========================================"
           url="${{ github.event.inputs.downloadurl }}"
-          curl -L "$url" -o plugin.zip || exit 1
+          curl -L -A "MoodleBot/5.0 (+https://github.com/lmscloud-io/moodle-ws-catalog)" "$url" -o plugin.zip || exit 1
           unzip -d tmp plugin.zip
           rm plugin.zip
           pluginpath=`ls -d1 tmp/* | head -1`

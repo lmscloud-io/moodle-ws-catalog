@@ -32,6 +32,10 @@ $CFG = (object)[];
 // Scripts output is piped into other commands, make sure errors do not end up in STDOUT.
 ini_set('display_errors', 'stderr');
 
+// Moodle servers challenge unknown clients from CI IP addresses, identify ourselves the same way
+// as Moodle does in core_useragent::get_moodlebot_useragent().
+define('MOODLEBOT_USERAGENT', 'MoodleBot/5.0 (+https://github.com/lmscloud-io/moodle-ws-catalog)');
+
 function get_moodle_branch($version) {
     $v = (float)$version;
     if ($version == 3.9) {
@@ -51,7 +55,7 @@ function curl_get($url) {
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['User-Agent: Curl']);
+    curl_setopt($ch, CURLOPT_USERAGENT, MOODLEBOT_USERAGENT);
     curl_setopt($ch, CURLOPT_HEADER, 0);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);

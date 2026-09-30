@@ -8,6 +8,9 @@ on:
 jobs:
   check-updates:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      actions: write
 
     steps:
       - name: Check out repository code
@@ -24,11 +27,17 @@ jobs:
       - name: Check for updates
         run: |
           cd catalog
-          php scripts/checknewversions.php | while IFS= read -r line; do
+          # Write to files first so that a failing script fails the step (it is ignored inside a pipe).
+          php scripts/checknewversions.php > "$RUNNER_TEMP/plugins.txt"
+          php scripts/checkcoreversions.php > "$RUNNER_TEMP/core.txt"
+          while IFS= read -r line; do
+            echo "Dispatching process_plugin_version: $line"
             echo "$line" | gh workflow run process_plugin_version.yml --json
-          done
-          php scripts/checkcoreversions.php | while IFS= read -r line; do
+          done < "$RUNNER_TEMP/plugins.txt"
+          while IFS= read -r line; do
+            echo "Dispatching process_core_version: $line"
             echo "$line" | gh workflow run process_core_version.yml --json
-          done
+          done < "$RUNNER_TEMP/core.txt"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          # workflow_dispatch is allowed to trigger new runs when using GITHUB_TOKEN.
+          GH_TOKEN: ${{ github.token }}

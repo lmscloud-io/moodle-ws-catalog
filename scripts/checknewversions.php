@@ -56,8 +56,10 @@ foreach ($allpluginsinfo as $plugininfo) {
             continue;
         }
         $supportedmoodles = $versioninfo['supportedmoodles'];
+        // Sort by Moodle version number, the API does not guarantee the order and release
+        // strings can not be compared as floats ("3.10" < "3.9").
         usort($supportedmoodles, function($a, $b) {
-            return (float)$a['release'] - (float)$b['release'];
+            return (int)$a['version'] <=> (int)$b['version'];
         });
         $supportedmin = $supportedmoodles[0]['release'];
         $supportedmax = end($supportedmoodles)['release'];

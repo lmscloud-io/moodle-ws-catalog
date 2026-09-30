@@ -29,6 +29,9 @@ define('ANY_VERSION', 'any');
 $maindir = dirname(__DIR__);
 $CFG = (object)[];
 
+// Scripts output is piped into other commands, make sure errors do not end up in STDOUT.
+ini_set('display_errors', 'stderr');
+
 function get_moodle_branch($version) {
     $v = (float)$version;
     if ($version == 3.9) {
@@ -51,13 +54,19 @@ function curl_get($url) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['User-Agent: Curl']);
     curl_setopt($ch, CURLOPT_HEADER, 0);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
     $response = curl_exec($ch);
     $errno = curl_errno($ch);
+    $error = curl_error($ch);
+    $httpcode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
 
     if ($errno) {
-        throw new Exception("Error requesting $url: " . curl_error($ch));
+        throw new Exception("Error requesting $url: " . $error);
+    }
+    if ($httpcode != 200) {
+        throw new Exception("Error requesting $url: HTTP $httpcode: " . substr($response, 0, 500));
     }
 
     return $response;
@@ -68,7 +77,8 @@ function get_all_plugins_info() {
     $response = curl_get($url);
     $data = json_decode($response, true);
     if (empty($data['plugins'])) {
-        echo 'Error: download.moodle.org did not return any plugins.';
+        fwrite(STDERR, "Error: download.moodle.org did not return any plugins. Response: " .
+            substr($response, 0, 500) . "\n");
         exit(1);
     }
     return $data['plugins'];

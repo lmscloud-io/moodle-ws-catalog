@@ -24,20 +24,28 @@ jobs:
           php-version: 8.2
           coverage: none
 
-      - name: Check for updates
+      - name: Check for plugin updates
         run: |
           cd catalog
-          # Write to files first so that a failing script fails the step (it is ignored inside a pipe).
+          # Write to a file first so that a failing script fails the step (it is ignored inside a pipe).
           php scripts/checknewversions.php > "$RUNNER_TEMP/plugins.txt"
-          php scripts/checkcoreversions.php > "$RUNNER_TEMP/core.txt"
           while IFS= read -r line; do
             echo "Dispatching process_plugin_version: $line"
             echo "$line" | gh workflow run process_plugin_version.yml --json
           done < "$RUNNER_TEMP/plugins.txt"
+        env:
+          # workflow_dispatch is allowed to trigger new runs when using GITHUB_TOKEN.
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Check for core updates
+        # Run even if plugin updates check failed.
+        if: ${{ !cancelled() }}
+        run: |
+          cd catalog
+          php scripts/checkcoreversions.php > "$RUNNER_TEMP/core.txt"
           while IFS= read -r line; do
             echo "Dispatching process_core_version: $line"
             echo "$line" | gh workflow run process_core_version.yml --json
           done < "$RUNNER_TEMP/core.txt"
         env:
-          # workflow_dispatch is allowed to trigger new runs when using GITHUB_TOKEN.
           GH_TOKEN: ${{ github.token }}
